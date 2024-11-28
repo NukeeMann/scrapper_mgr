@@ -17,7 +17,7 @@ from bs4 import BeautifulSoup
 
 class EtipgPipeline:
     def process_item(self, item, spider):
-        if os.path.split(item['dirpath'])[0] not in spider.allowed_domains:
+        if item['dirpath'].split(os.sep)[0] not in spider.allowed_domains:
             return item
         
         os.makedirs(item['dirpath'], exist_ok=True)

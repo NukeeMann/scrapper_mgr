@@ -35,9 +35,15 @@ def read_tag(response, tag):
         s.decompose()
 
     # select only specific tag and remove all non-text elements like <tags> </tags>
+    title_text = soup.find('div', {"id":'block-tytulstrony'})
+    if not title_text:
+        title_text = ""
+    else:
+        title_text = title_text.get_text()
+
     content = soup.find(tag)
     if content != None:
-        content = content.get_text()
+        content = title_text + content.get_text()
     return content
 
 def read_pdf_links(response):

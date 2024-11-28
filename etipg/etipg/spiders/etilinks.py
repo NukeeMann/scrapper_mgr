@@ -71,7 +71,7 @@ class EtilinksSpider(CrawlSpider):
 
         if content_text:
             filepath = os.path.join(dirpath, "content.txt")
-            with open(filepath, "w") as file:
+            with open(filepath, "w", encoding="utf-8") as file:
                 file.write(content_text)
 
     def parse_file(self, request, response):

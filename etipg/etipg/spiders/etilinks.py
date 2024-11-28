@@ -2,19 +2,15 @@ import scrapy
 import scrapy.http
 import scrapy.http.response
 import scrapy.http.response.html
-from scrapy.spiders import CrawlSpider, Rule
+from scrapy.spiders import CrawlSpider, Rule, Spider
 from scrapy.linkextractors import LinkExtractor
+from ..items import EtipgPageContent, EtipgFile
 
 import os
 import requests
 import urllib.parse
 from bs4 import BeautifulSoup
 
-def download_file(url, filename, dirpath):
-    r = requests.get(url)
-    path = os.path.join(dirpath, filename)
-    open(path, 'wb').write(r.content)
-    return path
 
 def remove_https(url):
     result = url.replace("https://","")
@@ -44,19 +40,23 @@ def read_tag(response, tag):
         content = content.get_text()
     return content
 
-class EtilinksSpider(CrawlSpider):
+def read_pdf_links(response):
+    soup = BeautifulSoup(response.text, "lxml")
+
+    contents = soup.find_all('a', href=True)
+    a_links = [ x["href"] for x in contents if x["href"].endswith('.pdf')]
+
+    return a_links
+
+class EtilinksSpider(Spider):
     name = "etilinks"
     allowed_domains = ["eti.pg.edu.pl", "files.pg.edu.pl"]
     start_urls = ["https://eti.pg.edu.pl"]
-    rules = [
-            Rule(LinkExtractor(allow_domains = ["eti.pg.edu.pl"], deny=(r"/documents/.*",r"/en/.*",r"/.*/....-../.*")), callback='parse_page', follow=True),
-            Rule(LinkExtractor(allow_domains = ["files.pg.edu.pl"],), process_request="parse_file", follow=False)
-            ]
-    file_hash = dict()
 
-    def parse_page(self, response):
+    def parse(self, response):
+        result = EtipgPageContent()
         dirpath = url_to_dir(response.url)
-        os.makedirs(dirpath, exist_ok=True)
+        result["dirpath"] = dirpath
 
         main_content = read_tag(response, "main")
         article_content = read_tag(response, "article")
@@ -68,18 +68,18 @@ class EtilinksSpider(CrawlSpider):
             content_text = article_content
         else:
             content_text = main_content or article_content
-
-        if content_text:
-            filepath = os.path.join(dirpath, "content.txt")
-            with open(filepath, "w", encoding="utf-8") as file:
-                file.write(content_text)
-
-    def parse_file(self, request, response):
-        filename = urllib.parse.unquote(request.url.split("/")[-1]).replace(" ","")
-        if not filename.endswith("pdf"):
-            filename = filename[-64:]
-            self.file_hash[request.url] = filename[-64:]
-            self.logger.info("Using alternative name %s %s!", request.url, filename)            
-        path = download_file(request.url, filename, url_to_dir(response.url))
-        self.logger.info("Downloaded %s", path)
-        return None
+        
+        result["content"] = content_text
+        yield result
+        
+        links_to_pdf = read_pdf_links(response)
+        
+        for link in links_to_pdf:
+            item = EtipgFile(dirpath = dirpath, link = link)
+            yield item
+        
+        le = LinkExtractor(allow_domains = ["eti.pg.edu.pl"], deny=(r"/documents/.*",r"/en/.*",r"/.*/....-../.*")) # Dokumenty, ENglish, aktualnosci
+        links = le.extract_links(response)
+        
+        for link in links:
+            yield scrapy.Request(link.url, callback=self.parse)

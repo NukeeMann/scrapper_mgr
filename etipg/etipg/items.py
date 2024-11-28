@@ -6,7 +6,14 @@
 import scrapy
 
 
-class EtipgItem(scrapy.Item):
+class EtipgPageContent(scrapy.Item):
     # define the fields for your item here like:
-    # name = scrapy.Field()
+    dirpath = scrapy.Field()
+    content = scrapy.Field()
+    pass
+
+class EtipgFile(scrapy.Item):
+    # define the fields for your item here like:
+    dirpath = scrapy.Field()
+    link = scrapy.Field()
     pass

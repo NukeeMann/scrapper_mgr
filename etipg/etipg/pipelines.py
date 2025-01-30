@@ -13,6 +13,7 @@ import urllib
 from pdfminer.high_level import extract_text_to_fp
 from io import BytesIO
 from bs4 import BeautifulSoup
+import mimetypes
 
 
 class EtipgPipeline:
@@ -22,23 +23,53 @@ class EtipgPipeline:
         
         os.makedirs(item['dirpath'], exist_ok=True)
         if isinstance(item, EtipgFile):
-            file_path, pdf_name = self.download_file(item['link'], item['dirpath'])
-            
-            html_text = self.pdf_to_html(file_path)
-            pdf_content = BeautifulSoup(html_text, "lxml").get_text()
-            
-            self.save_context(pdf_content, item['dirpath'], pdf_name.replace('.pdf', '.txt'))
+            #file_path, pdf_name = self.download_file(item['link'], item['dirpath'])
+            self.process_file_item(item)
         elif isinstance(item, EtipgPageContent):
-            self.save_context(item['content'], item['dirpath'], "content.txt")
+            self.process_page_item(item)
+            
+        #     html_text = self.pdf_to_html(file_path)
+        #     pdf_content = BeautifulSoup(html_text, "lxml").get_text()
+            
+        #     self.save_context(pdf_content, item['dirpath'], pdf_name.replace('.pdf', '.txt'))
+        # elif isinstance(item, EtipgPageContent):
+        #     self.save_context(item['content'], item['dirpath'], "page_content.txt")
 
         return item
+    
+    def process_file_item(self, item):
+        link = item["link"]
+        dirpath = item['dirpath']
+        try:
+            pdf_name = urllib.parse.unquote(link.split("/")[-1]).replace(" ","")[-64:]
+            file_path = os.path.join(dirpath, pdf_name)
+            
+            self.download_file(link, file_path)
+            html_text = self.pdf_to_html(file_path)
+            pdf_content = BeautifulSoup(html_text, "lxml").get_text()
+            self.save_context(pdf_content, dirpath, pdf_name.replace('.pdf', '.txt'))
+        except Exception as err:
+            err_msg = str(err)
+            if mimetypes.guess_type(file_path)[0] != 'application/pdf':
+                err_msg += "\nDownloaded file is not a PDF!"
+            
+            self.save_context( self.format_error_log(item, err_msg), dirpath, pdf_name+".error.txt")
+        
+    def process_page_item(self, item):
+        try:
+            self.save_context(item['content'], item['dirpath'], "content.txt")
+        except Exception as err: 
+            self.save_context( self.format_error_log(item, str(err)), item['dirpath'], "error.txt")
 
-    def download_file(self, url, dirpath):
-        filename = urllib.parse.unquote(url.split("/")[-1]).replace(" ","")[-64:]
+
+    #def download_file(self, url, dirpath):
+    def download_file(self, url, path):
+        #filename = urllib.parse.unquote(url.split("/")[-1]).replace(" ","")[-64:]
         r = requests.get(url)
-        path = os.path.join(dirpath, filename)
+        #path = os.path.join(dirpath, filename)
+        
         open(path, 'wb').write(r.content)
-        return path, filename
+        #return path, filename
     
     def pdf_to_html(self, pdf_path):
         output_buffer = BytesIO()
@@ -51,5 +82,14 @@ class EtipgPipeline:
     
     def save_context(self, content, dirpath, filename):
         filepath = os.path.join(dirpath, filename)
+        content_stripped = os.linesep.join([s for s in content.splitlines() if s])
         with open(filepath, "w", encoding="utf-8") as file:
-            file.write(content)
+            file.write(content_stripped)
+    
+    def format_error_log(self, item, err_msg):
+        return f"""
+                ###########################################
+                ITEM: {str(item)}
+                EXCEPT: {err_msg}
+                ###########################################
+                """

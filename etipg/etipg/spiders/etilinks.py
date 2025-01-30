@@ -56,6 +56,7 @@ def read_pdf_links(response):
 
 class EtilinksSpider(Spider):
     name = "etilinks"
+    default_domain = "eti.pg.edu.pl"
     allowed_domains = ["eti.pg.edu.pl", "files.pg.edu.pl"]
     start_urls = ["https://eti.pg.edu.pl"]
 
@@ -84,7 +85,8 @@ class EtilinksSpider(Spider):
             item = EtipgFile(dirpath = dirpath, link = link)
             yield item
         
-        le = LinkExtractor(allow_domains = ["eti.pg.edu.pl"], deny=(r"/documents/.*",r"/en/.*",r"/.*/....-../.*")) # Dokumenty, ENglish, aktualnosci
+        #le = LinkExtractor(allow_domains = ["eti.pg.edu.pl"], deny=(r"/documents/.*",r"/en/.*",r"/.*/....-../.*")) # Dokumenty, ENglish, aktualnosci
+        le = LinkExtractor(allow_domains = [self.default_domain], deny=(r"/documents/.*",r"/en/.*",r"/.*/....-../.*")) # Dokumenty, ENglish, aktualnosci
         links = le.extract_links(response)
         
         for link in links:

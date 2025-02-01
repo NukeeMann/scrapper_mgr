@@ -23,18 +23,10 @@ class EtipgPipeline:
         
         os.makedirs(item['dirpath'], exist_ok=True)
         if isinstance(item, EtipgFile):
-            #file_path, pdf_name = self.download_file(item['link'], item['dirpath'])
             self.process_file_item(item)
         elif isinstance(item, EtipgPageContent):
             self.process_page_item(item)
             
-        #     html_text = self.pdf_to_html(file_path)
-        #     pdf_content = BeautifulSoup(html_text, "lxml").get_text()
-            
-        #     self.save_context(pdf_content, item['dirpath'], pdf_name.replace('.pdf', '.txt'))
-        # elif isinstance(item, EtipgPageContent):
-        #     self.save_context(item['content'], item['dirpath'], "page_content.txt")
-
         return item
     
     def process_file_item(self, item):
@@ -62,14 +54,9 @@ class EtipgPipeline:
             self.save_context( self.format_error_log(item, str(err)), item['dirpath'], "error.txt")
 
 
-    #def download_file(self, url, dirpath):
     def download_file(self, url, path):
-        #filename = urllib.parse.unquote(url.split("/")[-1]).replace(" ","")[-64:]
         r = requests.get(url)
-        #path = os.path.join(dirpath, filename)
-        
         open(path, 'wb').write(r.content)
-        #return path, filename
     
     def pdf_to_html(self, pdf_path):
         output_buffer = BytesIO()

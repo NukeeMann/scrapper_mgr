@@ -85,7 +85,6 @@ class EtilinksSpider(Spider):
             item = EtipgFile(dirpath = dirpath, link = link)
             yield item
         
-        #le = LinkExtractor(allow_domains = ["eti.pg.edu.pl"], deny=(r"/documents/.*",r"/en/.*",r"/.*/....-../.*")) # Dokumenty, ENglish, aktualnosci
         le = LinkExtractor(allow_domains = [self.default_domain], deny=(r"/documents/.*",r"/en/.*",r"/.*/....-../.*")) # Dokumenty, ENglish, aktualnosci
         links = le.extract_links(response)
         

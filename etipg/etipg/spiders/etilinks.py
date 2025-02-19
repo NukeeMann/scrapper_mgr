@@ -10,6 +10,7 @@ import os
 import requests
 import urllib.parse
 from bs4 import BeautifulSoup
+import unicodedata
 
 
 def remove_https(url):
@@ -71,10 +72,10 @@ class EtilinksSpider(Spider):
         content_text = None
 
         #article tag has higher priority as it is more narrow
-        if article_content != None and main_content != None:
-            content_text = article_content
+        if article_content != None:
+            content_text = unicodedata.normalize("NFKD", article_content)
         else:
-            content_text = main_content or article_content
+            content_text = unicodedata.normalize("NFKD", main_content)
         
         result["content"] = content_text
         yield result
